@@ -1,0 +1,4 @@
+node_modules/
+.DS_Store
+apps-script/.clasp.json
+apps-script/Config.js
