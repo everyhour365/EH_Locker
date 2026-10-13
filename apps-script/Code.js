@@ -31,13 +31,16 @@ function doPost(e) {
     if (needKey && req.key !== needKey) {
       out = { ok: false, error: "unauthorized" };
     } else if (req.action === "lockers") {
-      out = { ok: true, data: getLockers_(!!req.fresh), sent: getSent_(), emptied: getEmptied_() };
+      out = { ok: true, data: getLockers_(!!req.fresh), sent: getSent_(), emptied: getEmptied_(), paid: getPaid_() };
     } else if (req.action === "markSent") {
       markSent_(req.branch, req.lockerNo, req.endDate);
       out = { ok: true, sent: getSent_() };
     } else if (req.action === "markEmpty") {
       markEmpty_(req.branch, req.lockerNo, req.endDate, !!req.empty);
       out = { ok: true, emptied: getEmptied_() };
+    } else if (req.action === "markPaid") {
+      markPaid_(req.branch, req.lockerNo, req.endDate, !!req.paid);
+      out = { ok: true, paid: getPaid_() };
     } else {
       out = { ok: false, error: "unknown action" };
     }
@@ -165,26 +168,31 @@ function markSent_(branch, lockerNo, endDate) {
   props_().setProperty("SENT_LOG", JSON.stringify(log));
 }
 
-// ─── 비움 처리 (짐을 뺀 칸) ─────────────────────────────────────────────────
-// 키가 만료일을 포함하므로 연장/재이용으로 만료일이 바뀌면 자동으로 해제된다.
-function getEmptied_() {
+// ─── 비움 처리 (짐을 뺀 칸) / 입금 확인 ─────────────────────────────────────
+// 둘 다 키에 만료일을 포함하므로 연장/재이용으로 만료일이 바뀌면 자동으로 해제된다.
+function getLog_(propKey) {
   var log = {};
-  try { log = JSON.parse(props_().getProperty("EMPTIED_LOG") || "{}"); } catch (e) {}
+  try { log = JSON.parse(props_().getProperty(propKey) || "{}"); } catch (e) {}
   return log; // { "branch|lockerNo|endDate": "yyyy-MM-dd HH:mm" }
 }
 
-function markEmpty_(branch, lockerNo, endDate, empty) {
-  var log = getEmptied_();
+function setLog_(propKey, branch, lockerNo, endDate, on) {
+  var log = getLog_(propKey);
   var key = branch + "|" + lockerNo + "|" + endDate;
   var now = new Date();
-  if (empty) log[key] = Utilities.formatDate(now, "Asia/Seoul", "yyyy-MM-dd HH:mm");
+  if (on) log[key] = Utilities.formatDate(now, "Asia/Seoul", "yyyy-MM-dd HH:mm");
   else delete log[key];
   var limit = now.getTime() - SENT_KEEP_DAYS * 86400000;
   Object.keys(log).forEach(function (k) {
     if (new Date(log[k].replace(" ", "T") + ":00+09:00").getTime() < limit) delete log[k];
   });
-  props_().setProperty("EMPTIED_LOG", JSON.stringify(log));
+  props_().setProperty(propKey, JSON.stringify(log));
 }
+
+function getEmptied_() { return getLog_("EMPTIED_LOG"); }
+function markEmpty_(branch, lockerNo, endDate, empty) { setLog_("EMPTIED_LOG", branch, lockerNo, endDate, empty); }
+function getPaid_() { return getLog_("PAID_LOG"); }
+function markPaid_(branch, lockerNo, endDate, paid) { setLog_("PAID_LOG", branch, lockerNo, endDate, paid); }
 
 // ─── 에디터에서 1회 실행해 동작 확인 ────────────────────────────────────────
 function debugRun() {

@@ -8,7 +8,7 @@ CS system / IoT system과 같은 구조: 단일 `index.html`(GitHub Pages) + App
 |---|---|
 | 프론트 | https://everyhour365.github.io/EH_Locker/ (레포 `everyhour365/EH_Locker`, 공개, main 브랜치 루트) |
 | 백엔드 | Apps Script 프로젝트 "EH Locker System" (스크립트 ID `16DoqmDWufp454xfvIicCchm6OOimDHaWjYBDt-ERztHeEjHW-vAgqoQR`, clasp 연결) |
-| 웹앱 URL | `index.html`의 `GAS_URL` 참고 (배포 ID `AKfycbyumEL_p516n7f8gZx36gB5H7v3j4kQWfCup5Q3_0LY7uIWmyaTbme978USqhg0Y292gw`, 현재 @6) |
+| 웹앱 URL | `index.html`의 `GAS_URL` 참고 (배포 ID `AKfycbyumEL_p516n7f8gZx36gB5H7v3j4kQWfCup5Q3_0LY7uIWmyaTbme978USqhg0Y292gw`, 현재 @7) |
 | 접속 키 | `apps-script/Config.js`의 `ACCESS_KEY_DEFAULT` (로컬 전용). 앱 ⚙ 설정에 입력 |
 | 계정 | `apps-script/Config.js`의 `SM_ACCOUNTS` (스터디모아 관리자 계정, **git 제외**) |
 
@@ -19,7 +19,7 @@ EH_Locker_system/
 ├─ CLAUDE.md               이 문서
 ├─ .gitignore              Config.js, .clasp.json, node_modules 제외
 └─ apps-script/
-   ├─ Code.js              웹앱 백엔드 (doPost: lockers / markSent)
+   ├─ Code.js              웹앱 백엔드 (doPost: lockers / markSent / markEmpty / markPaid)
    ├─ appsscript.json      웹앱 설정 (USER_DEPLOYING, ANYONE_ANONYMOUS, Asia/Seoul)
    ├─ Config.js            ⚠ git 제외 — 계정/접속 키. clasp push로만 올라감
    └─ .clasp.json          ⚠ git 제외 — 스크립트 ID
@@ -29,8 +29,9 @@ EH_Locker_system/
 ## 3. 동작
 - 지점 탭(성수/구의) + 사물함 격자. 만료 **D-3 ~ 만료 후 14일** 칸은 빨간 점선("확인 필요"). 칸을 탭하면 목록의 해당 행으로 이동.
 - 목록 행: 번호 · 이용자 · D-N/N일 경과 · 만료일 · 연장 시 만료일(+28일) · 연장 횟수.
+- **[비움]**: 짐 뺀 칸을 빈 사물함 처리(회색, 목록 하단 "비움 처리", 되돌리기 가능). **[입금]**: 입금 확인 체크(초록, 연장은 어드민에서 수동). 둘 다 백엔드 `EMPTIED_LOG`/`PAID_LOG`(키 `지점|칸|만료일`, 만료일이 바뀌면 자동 해제, 60일 보관).
 - **[문자]**: 누르면 문구를 클립보드에 복사(토스트 "문구 복사됨") + 문자앱이 번호·문구가 채워진 채 열림(`sms:`, iOS는 `&body=`) + GAS에 발송 기록. 행에 `✓ 문자 MM-DD HH:mm` 표시.
-- **[문구]**: 문구만 복사. **[연장하기 ↗]**: 스터디모아 어드민 사물함 페이지(연장은 수동). **↻**: 캐시 우회 새로고침. 3분마다 자동 갱신.
+- **[연장하기 ↗]**: 스터디모아 어드민 사물함 페이지(연장은 수동). **↻**: 캐시 우회 새로고침. 3분마다 자동 갱신.
 - ⚙ 설정(기기별 localStorage): 접속 키 / 금액 / 계좌 / 문구. 기본 문구는 `index.html`의 `DEFAULT_TPL` (금액 1만 원, 계좌 카카오뱅크 3333-25-0277947 포아워스).
 - `GAS_URL`이 비면 데모 데이터로 동작(UI 테스트용).
 

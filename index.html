@@ -63,6 +63,8 @@ body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSy
 .item .st.over{color:var(--danger);font-weight:600}
 .item .meta{font-size:12px;color:var(--sub);margin-top:3px;line-height:1.5;font-variant-numeric:tabular-nums}
 .item .sent{font-size:11px;color:#16a34a;font-weight:600;margin-top:2px}
+.item.paid{background:#f0fdf4;margin:0 -8px;padding-left:8px;padding-right:8px;border-radius:8px}
+.btn.ok{background:#16a34a;border-color:#16a34a;color:#fff}
 .btns{display:flex;gap:6px;flex-shrink:0}
 .btn{border:1px solid var(--border);background:var(--surface);color:var(--sub);border-radius:8px;padding:9px 12px;font-size:13px;font-weight:700;cursor:pointer;text-decoration:none;white-space:nowrap}
 .btn.fill{background:var(--bc);border-color:var(--bc);color:#fff}
@@ -151,7 +153,7 @@ const store = {
   get(k, d = '') { try { return localStorage.getItem('lock_' + k) ?? d; } catch { return d; } },
   set(k, v) { try { localStorage.setItem('lock_' + k, v); } catch {} }
 };
-let state = { branch: store.get('branch', 'seongsu'), data: null, sent: {}, emptied: {}, error: null };
+let state = { branch: store.get('branch', 'seongsu'), data: null, sent: {}, emptied: {}, paid: {}, error: null };
 
 // ─── 데이터 ──────────────────────────────────────────────────────────────────
 async function callGas(payload) {
@@ -165,7 +167,7 @@ async function load(fresh = false) {
   btn.classList.add('spin');
   try {
     if (!GAS_URL) { state.data = demoData(); state.sent = {}; }
-    else { const j = await callGas({ action: 'lockers', fresh }); state.data = j.data; state.sent = j.sent || {}; state.emptied = j.emptied || {}; }
+    else { const j = await callGas({ action: 'lockers', fresh }); state.data = j.data; state.sent = j.sent || {}; state.emptied = j.emptied || {}; state.paid = j.paid || {}; }
     state.error = null;
   } catch (e) { state.error = String(e.message || e); }
   btn.classList.remove('spin');
@@ -267,16 +269,18 @@ function render() {
   const items = alerts.map((a) => {
     const msg = buildMessage(a, b.name);
     const sentAt = state.sent[`${state.branch}|${a.no}|${a.endDate}`];
+    const paidAt = state.paid[`${state.branch}|${a.no}|${a.endDate}`];
     const sms = a.phone ? `sms:${a.phone}${isIOS ? '&' : '?'}body=${encodeURIComponent(msg)}` : '';
-    return `<div class="item" id="it-${a.no}">
+    return `<div class="item ${paidAt ? 'paid' : ''}" id="it-${a.no}">
       <div style="min-width:0">
         <div><span class="no">${esc(a.no)}번</span> ${esc(a.name || '이용자 정보 없음')}<span class="st ${a.diff < 0 ? 'over' : ''}">${stLabel(a.diff)}</span></div>
         <div class="meta">만료 ${a.endDate} → 연장 시 ${a.newEndDate}${a.extendCount != null ? ` · 연장 ${a.extendCount}회` : ''}</div>
         ${sentAt ? `<div class="sent">✓ 문자 ${esc(sentAt.slice(5))}</div>` : ''}
+        ${paidAt ? `<div class="sent">✓ 입금 확인 ${esc(paidAt.slice(5))} · 스터디모아에서 연장하세요</div>` : ''}
       </div>
       <div class="btns">
-        <button class="btn" data-copy="${a.no}">문구</button>
         ${sms ? `<a class="btn fill" href="${sms}" data-sent="${a.no}|${a.endDate}">문자</a>` : '<span class="btn dis">번호 없음</span>'}
+        <button class="btn ${paidAt ? 'ok' : ''}" data-paid="${a.no}|${a.endDate}|${paidAt ? 0 : 1}">${paidAt ? '입금 취소' : '입금'}</button>
         <button class="btn" data-empty="${a.no}|${a.endDate}">비움</button>
       </div>
     </div>`;
@@ -311,11 +315,6 @@ function render() {
     const t = document.getElementById('it-' + el.dataset.no);
     if (t) { t.scrollIntoView({ behavior: 'smooth', block: 'center' }); t.classList.remove('flash'); void t.offsetWidth; t.classList.add('flash'); }
   });
-  app.querySelectorAll('[data-copy]').forEach((el) => el.onclick = async () => {
-    const a = alerts.find((x) => x.no === el.dataset.copy);
-    const msg = buildMessage(a, b.name);
-    if (await copyText(msg)) toast('문구 복사됨'); else window.prompt('복사해서 사용하세요', msg);
-  });
   const setEmpty = (el, attr, empty) => {
     const [no, endDate] = el.dataset[attr].split('|');
     const key = `${state.branch}|${no}|${endDate}`;
@@ -326,6 +325,16 @@ function render() {
       .then((j) => { state.emptied = j.emptied || state.emptied; render(); })
       .catch(() => { toast('저장 실패 — 새로고침 해주세요'); });
   };
+  app.querySelectorAll('[data-paid]').forEach((el) => el.onclick = () => {
+    const [no, endDate, on] = el.dataset.paid.split('|');
+    const paid = on === '1', key = `${state.branch}|${no}|${endDate}`;
+    if (paid) state.paid[key] = `${ymd(new Date())} ${pad(new Date().getHours())}:${pad(new Date().getMinutes())}`; else delete state.paid[key];
+    render(); toast(paid ? '입금 확인됨' : '입금 확인 취소');
+    if (!GAS_URL) return;
+    callGas({ action: 'markPaid', branch: state.branch, lockerNo: no, endDate, paid })
+      .then((j) => { state.paid = j.paid || state.paid; render(); })
+      .catch(() => { toast('저장 실패 — 새로고침 해주세요'); });
+  });
   app.querySelectorAll('[data-empty]').forEach((el) => el.onclick = () => setEmpty(el, 'empty', true));
   app.querySelectorAll('[data-unempty]').forEach((el) => el.onclick = () => setEmpty(el, 'unempty', false));
   app.querySelectorAll('[data-sent]').forEach((el) => el.addEventListener('click', () => {
