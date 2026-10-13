@@ -8,7 +8,7 @@ CS system / IoT system과 같은 구조: 단일 `index.html`(GitHub Pages) + App
 |---|---|
 | 프론트 | https://everyhour365.github.io/EH_Locker/ (레포 `everyhour365/EH_Locker`, 공개, main 브랜치 루트) |
 | 백엔드 | Apps Script 프로젝트 "EH Locker System" (스크립트 ID `16DoqmDWufp454xfvIicCchm6OOimDHaWjYBDt-ERztHeEjHW-vAgqoQR`, clasp 연결) |
-| 웹앱 URL | `index.html`의 `GAS_URL` 참고 (배포 ID `AKfycbyumEL_p516n7f8gZx36gB5H7v3j4kQWfCup5Q3_0LY7uIWmyaTbme978USqhg0Y292gw`, 현재 @5) |
+| 웹앱 URL | `index.html`의 `GAS_URL` 참고 (배포 ID `AKfycbyumEL_p516n7f8gZx36gB5H7v3j4kQWfCup5Q3_0LY7uIWmyaTbme978USqhg0Y292gw`, 현재 @6) |
 | 접속 키 | `apps-script/Config.js`의 `ACCESS_KEY_DEFAULT` (로컬 전용). 앱 ⚙ 설정에 입력 |
 | 계정 | `apps-script/Config.js`의 `SM_ACCOUNTS` (스터디모아 관리자 계정, **git 제외**) |
 

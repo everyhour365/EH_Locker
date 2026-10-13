@@ -45,6 +45,7 @@ body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSy
 .cell.off{border:none;background:#e5e7eb;color:#fff}
 .cell.alert{border:2px dashed var(--danger);cursor:pointer}
 .cell.alert:not(.used){color:var(--danger)}
+.cell.vacant{border:1.5px solid var(--border);background:#f3f4f6;color:var(--hint);cursor:pointer}
 .legend{display:flex;gap:12px;flex-wrap:wrap;margin-top:12px;font-size:12px;color:var(--sub)}
 .legend i{display:inline-block;width:11px;height:11px;border-radius:3px;margin-right:4px;vertical-align:-1px}
 
@@ -67,6 +68,8 @@ body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSy
 .btn.fill{background:var(--bc);border-color:var(--bc);color:#fff}
 .btn:active{opacity:.85}
 .btn.dis{opacity:.45;pointer-events:none}
+.item.vac{opacity:.65}
+.sub-head{font-size:12px;font-weight:700;color:var(--sub);margin:14px 0 2px;padding-top:12px;border-top:1px solid var(--border)}
 
 .err{background:#fef2f2;color:var(--danger);border-radius:12px;padding:12px 14px;font-size:13px;line-height:1.5}
 .skeleton{height:220px;border-radius:16px;background:linear-gradient(90deg,#f3f4f6,#e5e7eb,#f3f4f6);background-size:200% 100%;animation:sk 1.2s infinite}
@@ -148,7 +151,7 @@ const store = {
   get(k, d = '') { try { return localStorage.getItem('lock_' + k) ?? d; } catch { return d; } },
   set(k, v) { try { localStorage.setItem('lock_' + k, v); } catch {} }
 };
-let state = { branch: store.get('branch', 'seongsu'), data: null, sent: {}, error: null };
+let state = { branch: store.get('branch', 'seongsu'), data: null, sent: {}, emptied: {}, error: null };
 
 // ─── 데이터 ──────────────────────────────────────────────────────────────────
 async function callGas(payload) {
@@ -162,7 +165,7 @@ async function load(fresh = false) {
   btn.classList.add('spin');
   try {
     if (!GAS_URL) { state.data = demoData(); state.sent = {}; }
-    else { const j = await callGas({ action: 'lockers', fresh }); state.data = j.data; state.sent = j.sent || {}; }
+    else { const j = await callGas({ action: 'lockers', fresh }); state.data = j.data; state.sent = j.sent || {}; state.emptied = j.emptied || {}; }
     state.error = null;
   } catch (e) { state.error = String(e.message || e); }
   btn.classList.remove('spin');
@@ -236,7 +239,7 @@ function render() {
   document.documentElement.style.setProperty('--bc', BRANCH_COLOR[state.branch]);
   bar.innerHTML = BRANCH_ORDER.map((id) => {
     const b = state.data && state.data[id];
-    const n = b ? getAlerts(b).length : 0;
+    const n = b ? getAlerts(b).filter((a) => !state.emptied[`${id}|${a.no}|${a.endDate}`]).length : 0;
     return `<button class="tab-btn ${id === state.branch ? 'active' : ''}" style="--tc:${BRANCH_COLOR[id]}" data-b="${id}">${b ? esc(b.name) : id}${n ? `<span class="badge">${n}</span>` : ''}</button>`;
   }).join('');
   bar.querySelectorAll('.tab-btn').forEach((el) => el.onclick = () => { state.branch = el.dataset.b; store.set('branch', state.branch); render(); });
@@ -246,15 +249,19 @@ function render() {
   if (!state.data) return;
 
   const b = state.data[state.branch];
-  const alerts = getAlerts(b);
+  const allAlerts = getAlerts(b);
+  const isVac = (a) => !!state.emptied[`${state.branch}|${a.no}|${a.endDate}`];
+  const alerts = allAlerts.filter((a) => !isVac(a));
+  const vacated = allAlerts.filter(isVac);
   const alertSet = new Set(alerts.map((a) => a.no));
+  const vacSet = new Set(vacated.map((a) => a.no));
   const rows = (b.layout && b.layout.data) || [];
   const cols = (rows[0] || []).length;
   const grid = rows.map((row) => row.map((c) => {
     if (!c || c.t !== 'locker') return '<div></div>';
     const no = String(c.n), used = !!c.name && !c.disabled;
-    const cls = ['cell', c.disabled ? 'off' : used ? 'used' : '', alertSet.has(no) ? 'alert' : ''].join(' ');
-    return `<button class="${cls}" data-no="${no}" ${alertSet.has(no) ? '' : 'tabindex="-1"'}>${esc(c.n)}</button>`;
+    const cls = ['cell', c.disabled ? 'off' : used ? 'used' : '', alertSet.has(no) ? 'alert' : '', vacSet.has(no) ? 'vacant' : ''].join(' ');
+    return `<button class="${cls}" data-no="${no}" ${alertSet.has(no) || vacSet.has(no) ? '' : 'tabindex="-1"'}>${esc(c.n)}</button>`;
   }).join('')).join('');
 
   const items = alerts.map((a) => {
@@ -270,9 +277,17 @@ function render() {
       <div class="btns">
         <button class="btn" data-copy="${a.no}">문구</button>
         ${sms ? `<a class="btn fill" href="${sms}" data-sent="${a.no}|${a.endDate}">문자</a>` : '<span class="btn dis">번호 없음</span>'}
+        <button class="btn" data-empty="${a.no}|${a.endDate}">비움</button>
       </div>
     </div>`;
   }).join('');
+  const vacItems = vacated.map((a) => `<div class="item vac" id="it-${a.no}">
+      <div style="min-width:0">
+        <div><span class="no">${esc(a.no)}번</span> ${esc(a.name || '이용자 정보 없음')}<span class="st">${stLabel(a.diff)}</span></div>
+        <div class="meta">만료 ${a.endDate} · 비움 ${esc(state.emptied[`${state.branch}|${a.no}|${a.endDate}`].slice(5))}</div>
+      </div>
+      <div class="btns"><button class="btn" data-unempty="${a.no}|${a.endDate}">되돌리기</button></div>
+    </div>`).join('');
 
   app.innerHTML = `
     <div class="card">
@@ -282,15 +297,17 @@ function render() {
         <span><i style="background:color-mix(in srgb,var(--bc) 28%,transparent)"></i>이용중</span>
         <span><i style="background:#e5e7eb"></i>사용 안함</span>
         <span><i style="border:2px dashed var(--danger)"></i>확인 필요</span>
+        <span><i style="background:#f3f4f6;border:1.5px solid var(--border)"></i>비움 처리</span>
       </div>
     </div>
     <div class="card">
       <div class="sec-head"><b>확인 필요 ${alerts.length}건</b><a class="link" href="${ADMIN_LOCKER_URL}" target="_blank" rel="noopener">연장하기 ↗</a></div>
       ${alerts.length ? items : '<div class="empty">처리할 사물함이 없습니다.</div>'}
+      ${vacated.length ? `<div class="sub-head">비움 처리 ${vacated.length}건</div>${vacItems}` : ''}
     </div>
     <div class="foot">연장은 스터디모아 어드민에서 처리한 뒤 ↻ 새로고침</div>`;
 
-  app.querySelectorAll('.cell.alert').forEach((el) => el.onclick = () => {
+  app.querySelectorAll('.cell.alert, .cell.vacant').forEach((el) => el.onclick = () => {
     const t = document.getElementById('it-' + el.dataset.no);
     if (t) { t.scrollIntoView({ behavior: 'smooth', block: 'center' }); t.classList.remove('flash'); void t.offsetWidth; t.classList.add('flash'); }
   });
@@ -299,6 +316,18 @@ function render() {
     const msg = buildMessage(a, b.name);
     if (await copyText(msg)) toast('문구 복사됨'); else window.prompt('복사해서 사용하세요', msg);
   });
+  const setEmpty = (el, attr, empty) => {
+    const [no, endDate] = el.dataset[attr].split('|');
+    const key = `${state.branch}|${no}|${endDate}`;
+    if (empty) state.emptied[key] = `${ymd(new Date())} ${pad(new Date().getHours())}:${pad(new Date().getMinutes())}`; else delete state.emptied[key];
+    render(); toast(empty ? '비움 처리됨' : '되돌렸습니다');
+    if (!GAS_URL) return;
+    callGas({ action: 'markEmpty', branch: state.branch, lockerNo: no, endDate, empty })
+      .then((j) => { state.emptied = j.emptied || state.emptied; render(); })
+      .catch(() => { toast('저장 실패 — 새로고침 해주세요'); });
+  };
+  app.querySelectorAll('[data-empty]').forEach((el) => el.onclick = () => setEmpty(el, 'empty', true));
+  app.querySelectorAll('[data-unempty]').forEach((el) => el.onclick = () => setEmpty(el, 'unempty', false));
   app.querySelectorAll('[data-sent]').forEach((el) => el.addEventListener('click', () => {
     const [no, endDate] = el.dataset.sent.split('|');
     const a = alerts.find((x) => x.no === no);
