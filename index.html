@@ -153,7 +153,7 @@ const store = {
   get(k, d = '') { try { return localStorage.getItem('lock_' + k) ?? d; } catch { return d; } },
   set(k, v) { try { localStorage.setItem('lock_' + k, v); } catch {} }
 };
-let state = { branch: store.get('branch', 'seongsu'), data: null, sent: {}, emptied: {}, paid: {}, error: null };
+let state = { branch: store.get('branch', 'seongsu'), data: null, sent: {}, emptied: {}, paid: {}, alimtalk: {}, error: null };
 
 // ─── 데이터 ──────────────────────────────────────────────────────────────────
 async function callGas(payload) {
@@ -167,7 +167,7 @@ async function load(fresh = false) {
   btn.classList.add('spin');
   try {
     if (!GAS_URL) { state.data = demoData(); state.sent = {}; }
-    else { const j = await callGas({ action: 'lockers', fresh }); state.data = j.data; state.sent = j.sent || {}; state.emptied = j.emptied || {}; state.paid = j.paid || {}; }
+    else { const j = await callGas({ action: 'lockers', fresh }); state.data = j.data; state.sent = j.sent || {}; state.emptied = j.emptied || {}; state.paid = j.paid || {}; state.alimtalk = j.alimtalk || {}; }
     state.error = null;
   } catch (e) { state.error = String(e.message || e); }
   btn.classList.remove('spin');
@@ -275,11 +275,11 @@ function render() {
       <div style="min-width:0">
         <div><span class="no">${esc(a.no)}번</span> ${esc(a.name || '이용자 정보 없음')}<span class="st ${a.diff < 0 ? 'over' : ''}">${stLabel(a.diff)}</span></div>
         <div class="meta">만료 ${a.endDate} → 연장 시 ${a.newEndDate}${a.extendCount != null ? ` · 연장 ${a.extendCount}회` : ''}</div>
-        ${sentAt ? `<div class="sent">✓ 문자 ${esc(sentAt.slice(5))}</div>` : ''}
+        ${sentAt ? `<div class="sent">✓ ${state.alimtalk[state.branch] ? '알림톡' : '문자'} ${esc(sentAt.slice(5))}</div>` : ''}
         ${paidAt ? `<div class="sent">✓ 입금 확인 ${esc(paidAt.slice(5))} · 스터디모아에서 연장하세요</div>` : ''}
       </div>
       <div class="btns">
-        ${sms ? `<a class="btn fill" href="${sms}" data-sent="${a.no}|${a.endDate}">문자</a>` : '<span class="btn dis">번호 없음</span>'}
+        ${!a.phone ? '<span class="btn dis">번호 없음</span>' : state.alimtalk[state.branch] ? `<button class="btn fill" data-ata="${a.no}|${a.endDate}">알림톡</button>` : `<a class="btn fill" href="${sms}" data-sent="${a.no}|${a.endDate}">문자</a>`}
         <button class="btn ${paidAt ? 'ok' : ''}" data-paid="${a.no}|${a.endDate}|${paidAt ? 0 : 1}">${paidAt ? '입금 취소' : '입금'}</button>
         <button class="btn" data-empty="${a.no}|${a.endDate}">비움</button>
       </div>
@@ -325,6 +325,19 @@ function render() {
       .then((j) => { state.emptied = j.emptied || state.emptied; render(); })
       .catch(() => { toast('저장 실패 — 새로고침 해주세요'); });
   };
+  app.querySelectorAll('[data-ata]').forEach((el) => el.onclick = async () => {
+    const [no, endDate] = el.dataset.ata.split('|');
+    const a = alerts.find((x) => x.no === no);
+    const again = state.sent[`${state.branch}|${no}|${endDate}`] ? '\n(이미 발송한 기록이 있습니다)' : '';
+    if (!confirm(`${no}번 ${a.name || ''}님께 알림톡을 발송할까요?${again}`)) return;
+    el.classList.add('dis'); el.textContent = '발송 중…';
+    try {
+      const j = await callGas({ action: 'sendAlimtalk', branch: state.branch, lockerNo: no, endDate,
+        price: store.get('price') || DEFAULT_PRICE, account: store.get('account') || DEFAULT_ACCOUNT });
+      state.sent = j.sent || state.sent; toast('알림톡 발송됨');
+    } catch (e) { toast('발송 실패: ' + String(e.message || e).slice(0, 40)); alert(String(e.message || e)); }
+    render();
+  });
   app.querySelectorAll('[data-paid]').forEach((el) => el.onclick = () => {
     const [no, endDate, on] = el.dataset.paid.split('|');
     const paid = on === '1', key = `${state.branch}|${no}|${endDate}`;

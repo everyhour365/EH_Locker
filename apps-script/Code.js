@@ -31,13 +31,15 @@ function doPost(e) {
     if (needKey && req.key !== needKey) {
       out = { ok: false, error: "unauthorized" };
     } else if (req.action === "lockers") {
-      out = { ok: true, data: getLockers_(!!req.fresh), sent: getSent_(), emptied: getEmptied_(), paid: getPaid_() };
+      out = { ok: true, data: getLockers_(!!req.fresh), sent: getSent_(), emptied: getEmptied_(), paid: getPaid_(), alimtalk: solapiReady_() };
     } else if (req.action === "markSent") {
       markSent_(req.branch, req.lockerNo, req.endDate);
       out = { ok: true, sent: getSent_() };
     } else if (req.action === "markEmpty") {
       markEmpty_(req.branch, req.lockerNo, req.endDate, !!req.empty);
       out = { ok: true, emptied: getEmptied_() };
+    } else if (req.action === "sendAlimtalk") {
+      out = sendLockerAlimtalk_(req);
     } else if (req.action === "markPaid") {
       markPaid_(req.branch, req.lockerNo, req.endDate, !!req.paid);
       out = { ok: true, paid: getPaid_() };
@@ -193,6 +195,75 @@ function getEmptied_() { return getLog_("EMPTIED_LOG"); }
 function markEmpty_(branch, lockerNo, endDate, empty) { setLog_("EMPTIED_LOG", branch, lockerNo, endDate, empty); }
 function getPaid_() { return getLog_("PAID_LOG"); }
 function markPaid_(branch, lockerNo, endDate, paid) { setLog_("PAID_LOG", branch, lockerNo, endDate, paid); }
+
+// ─── 솔라피 알림톡 ──────────────────────────────────────────────────────────
+// 설정은 스크립트 속성 우선, 없으면 Config.js의 SOLAPI. IoT 시스템과 같은 키/발신번호/채널(PFID)을 쓰고
+// 템플릿 ID만 사물함용을 따로 둔다.
+//   SOLAPI_API_KEY / SOLAPI_API_SECRET / SOLAPI_FROM
+//   SOLAPI_PFID_<지점>            카카오 채널 ID (지점별)
+//   SOLAPI_LOCKER_TPL_<지점>      사물함 입금 안내 템플릿 ID (지점별, 승인 후 입력)
+// 템플릿 변수: #{번호} #{만료일} #{연장일} #{금액} #{계좌}  (지점명은 템플릿에 고정)
+var EXTEND_DAYS = 28;
+
+function solapiProp_(k) {
+  var v = props_().getProperty(k);
+  if (v) return v;
+  return (typeof SOLAPI !== "undefined" && SOLAPI[k]) || "";
+}
+
+function solapiReady_() {
+  var base = !!(solapiProp_("SOLAPI_API_KEY") && solapiProp_("SOLAPI_API_SECRET") && solapiProp_("SOLAPI_FROM"));
+  var r = {};
+  Object.keys(BRANCHES).forEach(function (id) {
+    r[id] = base && !!solapiProp_("SOLAPI_PFID_" + id) && !!solapiProp_("SOLAPI_LOCKER_TPL_" + id);
+  });
+  return r;
+}
+
+function solapiSend_(branch, phone, variables) {
+  var apiKey = solapiProp_("SOLAPI_API_KEY"), apiSecret = solapiProp_("SOLAPI_API_SECRET");
+  var date = new Date().toISOString();
+  var salt = Utilities.getUuid().replace(/-/g, "");
+  var sig = Utilities.computeHmacSha256Signature(date + salt, apiSecret);
+  var signature = sig.map(function (b) { var v = (b < 0 ? b + 256 : b).toString(16); return v.length === 1 ? "0" + v : v; }).join("");
+  var res = UrlFetchApp.fetch("https://api.solapi.com/messages/v4/send", {
+    method: "post", contentType: "application/json",
+    headers: { Authorization: "HMAC-SHA256 apiKey=" + apiKey + ", date=" + date + ", salt=" + salt + ", signature=" + signature },
+    payload: JSON.stringify({
+      message: {
+        to: phone, from: solapiProp_("SOLAPI_FROM"), type: "ATA",
+        kakaoOptions: { pfId: solapiProp_("SOLAPI_PFID_" + branch), templateId: solapiProp_("SOLAPI_LOCKER_TPL_" + branch), variables: variables }
+      }
+    }),
+    muteHttpExceptions: true
+  });
+  var code = res.getResponseCode();
+  if (code < 200 || code >= 300) {
+    var msg = res.getContentText();
+    try { msg = JSON.parse(msg).errorMessage || msg; } catch (e) {}
+    throw new Error("솔라피 발송 실패(" + code + "): " + msg);
+  }
+}
+
+// 번호는 서버가 가진 데이터에서 찾는다 (클라이언트가 임의 번호로 보내지 못하게)
+function sendLockerAlimtalk_(req) {
+  var branch = req.branch, no = String(req.lockerNo), endDate = String(req.endDate || "");
+  if (!BRANCHES[branch]) return { ok: false, error: "unknown branch" };
+  if (!solapiReady_()[branch]) return { ok: false, error: "알림톡 미설정 (솔라피 키/템플릿)" };
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(endDate)) return { ok: false, error: "invalid endDate" };
+  var b = getLockers_(false)[branch];
+  var u = (b.usage || []).filter(function (x) { return x.lockerNo === no; })[0] || (b.lastKnown || {})[no];
+  var phone = u && String(u.phone || "").replace(/\D/g, "");
+  if (!phone) return { ok: false, error: "이용자 번호 없음" };
+  var d = new Date(endDate + "T00:00:00+09:00");
+  var newEnd = Utilities.formatDate(new Date(d.getTime() + EXTEND_DAYS * 86400000), "Asia/Seoul", "yyyy-MM-dd");
+  solapiSend_(branch, phone, {
+    "#{번호}": no, "#{만료일}": endDate, "#{연장일}": newEnd,
+    "#{금액}": String(req.price || "").slice(0, 30), "#{계좌}": String(req.account || "").slice(0, 60)
+  });
+  markSent_(branch, no, endDate);
+  return { ok: true, sent: getSent_() };
+}
 
 // ─── 에디터에서 1회 실행해 동작 확인 ────────────────────────────────────────
 function debugRun() {
