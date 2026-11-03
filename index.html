@@ -99,7 +99,7 @@ body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSy
   <div><h1>Locker System</h1><p id="updated">불러오는 중…</p></div>
   <div class="hbtns">
     <button class="icon-btn" id="settingsBtn" aria-label="설정"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33h0a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51h0a1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82v0a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></button>
-    <button class="icon-btn primary" id="refreshBtn" aria-label="새로고침">↻</button>
+    <button class="icon-btn primary" id="refreshBtn" aria-label="새로고침"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg></button>
   </div>
 </div>
 <div class="tabbar" id="tabbar"></div>
@@ -309,7 +309,7 @@ function render() {
       ${alerts.length ? items : '<div class="empty">처리할 사물함이 없습니다.</div>'}
       ${vacated.length ? `<div class="sub-head">비움 처리 ${vacated.length}건</div>${vacItems}` : ''}
     </div>
-    <div class="foot">연장은 스터디모아 어드민에서 처리한 뒤 ↻ 새로고침</div>`;
+    <div class="foot">연장은 스터디모아 어드민에서 처리한 뒤 새로고침</div>`;
 
   app.querySelectorAll('.cell.alert, .cell.vacant').forEach((el) => el.onclick = () => {
     const t = document.getElementById('it-' + el.dataset.no);
