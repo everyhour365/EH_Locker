@@ -47,6 +47,7 @@ EH_Locker_system/
 - 프론트→GAS는 `fetch(GAS_URL, {method:'POST', body: JSON.stringify(...)})` (프리플라이트 없는 단순 요청, IoT와 동일). **curl로 테스트할 때는** `-L` 없이 POST 후 `redirect_url`을 GET으로 따라가야 함.
 
 ## 5. 배포 방법
+- 홈 화면 앱은 `index.html`을 오래 캐시함 → `index.html`에 `VERSION` 상수(하단에 표시)를 두고, 앱이 켜지거나 복귀할 때 최신 `VERSION`과 비교해 다르면 `?v=버전` 주소로 새로 불러옴(`checkUpdate`). **프론트를 바꿀 때마다 `VERSION` 값도 바꿔야 자동 갱신됨.**
 - 프론트: `git add -A && git commit && git push` → Pages 자동 반영 (1~2분).
 - 백엔드: `cd apps-script && clasp push -f && clasp deploy -i <배포ID> -d "설명"` (같은 URL 유지, `-i` 필수).
 - ⚠ **Apps Script 에디터에서 코드를 직접 수정하지 말 것.** clasp push가 덮어쓰고, 저장 안 한 편집은 새로고침하면 사라짐. 수정은 항상 로컬 파일에서.
