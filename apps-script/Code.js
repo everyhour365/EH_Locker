@@ -33,7 +33,7 @@ function doPost(e) {
     } else if (req.action === "lockers") {
       out = { ok: true, data: getLockers_(!!req.fresh), sent: getSent_(), emptied: getEmptied_(), paid: getPaid_(), alimtalk: solapiReady_() };
     } else if (req.action === "markSent") {
-      markSent_(req.branch, req.lockerNo, req.endDate);
+      markSent_(req.branch, req.lockerNo, req.endDate, req.sent !== false);
       out = { ok: true, sent: getSent_() };
     } else if (req.action === "markEmpty") {
       markEmpty_(req.branch, req.lockerNo, req.endDate, !!req.empty);
@@ -159,10 +159,12 @@ function getSent_() {
   return log; // { "branch|lockerNo|endDate": "yyyy-MM-dd HH:mm" }
 }
 
-function markSent_(branch, lockerNo, endDate) {
+function markSent_(branch, lockerNo, endDate, on) {
   var log = getSent_();
   var now = new Date();
-  log[branch + "|" + lockerNo + "|" + endDate] = Utilities.formatDate(now, "Asia/Seoul", "yyyy-MM-dd HH:mm");
+  var key = branch + "|" + lockerNo + "|" + endDate;
+  if (on === false) delete log[key];
+  else log[key] = Utilities.formatDate(now, "Asia/Seoul", "yyyy-MM-dd HH:mm");
   var limit = now.getTime() - SENT_KEEP_DAYS * 86400000;
   Object.keys(log).forEach(function (k) {
     if (new Date(log[k].replace(" ", "T") + ":00+09:00").getTime() < limit) delete log[k];

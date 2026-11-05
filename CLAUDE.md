@@ -8,7 +8,7 @@ CS system / IoT system과 같은 구조: 단일 `index.html`(GitHub Pages) + App
 |---|---|
 | 프론트 | https://everyhour365.github.io/EH_Locker/ (레포 `everyhour365/EH_Locker`, 공개, main 브랜치 루트) |
 | 백엔드 | Apps Script 프로젝트 "EH Locker System" (스크립트 ID `16DoqmDWufp454xfvIicCchm6OOimDHaWjYBDt-ERztHeEjHW-vAgqoQR`, clasp 연결) |
-| 웹앱 URL | `index.html`의 `GAS_URL` 참고 (배포 ID `AKfycbyumEL_p516n7f8gZx36gB5H7v3j4kQWfCup5Q3_0LY7uIWmyaTbme978USqhg0Y292gw`, 현재 @8) |
+| 웹앱 URL | `index.html`의 `GAS_URL` 참고 (배포 ID `AKfycbyumEL_p516n7f8gZx36gB5H7v3j4kQWfCup5Q3_0LY7uIWmyaTbme978USqhg0Y292gw`, 현재 @10) |
 | 접속 키 | `apps-script/Config.js`의 `ACCESS_KEY_DEFAULT` (로컬 전용). 앱 ⚙ 설정에 입력 |
 | 계정 | `apps-script/Config.js`의 `SM_ACCOUNTS` (스터디모아 관리자 계정, **git 제외**) |
 
@@ -30,6 +30,7 @@ EH_Locker_system/
 ## 3. 동작
 - 지점 탭(성수/구의) + 사물함 격자. 만료 **D-3 ~ 만료 후 14일** 칸은 빨간 점선("확인 필요"). 칸을 탭하면 목록의 해당 행으로 이동.
 - 목록 행: 번호 · 이용자 · D-N/N일 경과 · 만료일 · 연장 시 시작~종료일(만료+1일 ~ 만료+28일) · 연장 횟수.
+- 버튼 순서 **[비움] [문자] [입금]**. 발송 칩(`✓ 문자 … ✕`)을 탭하면 발송 기록을 지울 수 있음(문자앱만 열고 실제로는 안 보낸 경우, `markSent` `sent:false`).
 - **[입금]** / **[비움]**: 탭하면 같은 자리에서 **[완료]**(초록)로 바뀌고, 다시 탭하면 원래 버튼으로 돌아옴(토글). 입금 확인은 연장 대기 표시(연장은 어드민에서 수동), 비움은 짐 뺀 칸 처리(격자 회색, 행 흐리게·문자 버튼 숨김, "확인 필요" 건수에서 제외, 목록 맨 아래로 이동, **비움 후 24시간이 지나면 목록에서 사라짐**). 둘 다 백엔드 `EMPTIED_LOG`/`PAID_LOG`(키 `지점|칸|만료일`, 만료일이 바뀌면 자동 해제, 60일 보관).
 - **[알림톡]**: `solapiReady_()`가 지점별로 true면 [문자] 대신 표시. 솔라피(IoT와 같은 키·발신번호·채널)로 발송 → 확인창 후 서버가 번호를 찾아 `type:ATA` 전송 + `SENT_LOG` 기록. 설정은 Config.js `SOLAPI` 또는 스크립트 속성(`SOLAPI_API_KEY/SECRET/FROM`, `SOLAPI_PFID_<지점>`, **`SOLAPI_LOCKER_TPL_<지점>`=사물함 템플릿 승인 후 입력**). 템플릿 변수 `#{번호} #{만료일} #{연장일} #{금액} #{계좌}`(지점명 고정). 미설정이면 아래 [문자] 방식으로 폴백.
 - **[문자]**(알림톡 미설정 시): 누르면 문구를 클립보드에 복사(토스트 "문구 복사됨") + 문자앱이 번호·문구가 채워진 채 열림(`sms:`, iOS는 `&body=`) + GAS에 발송 기록. 행에 `✓ 문자 MM-DD HH:mm` 표시.
