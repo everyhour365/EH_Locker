@@ -47,7 +47,7 @@ body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSy
 .cell.off{border:none;background:#e5e7eb;color:#fff}
 .cell.alert{border:1px dashed var(--danger);cursor:pointer}
 .cell.alert:not(.used){color:var(--danger)}
-.cell.vacant{border:1.5px solid var(--border);background:#f3f4f6;color:var(--hint);cursor:pointer}
+.cell.vacant{cursor:pointer}
 .legend{display:flex;gap:12px;flex-wrap:wrap;margin-top:12px;font-size:12px;color:var(--sub)}
 .legend i{display:inline-block;width:11px;height:11px;border-radius:3px;margin-right:4px;vertical-align:-1px}
 
@@ -135,7 +135,7 @@ body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSy
 <script>
 // ─── 설정 ────────────────────────────────────────────────────────────────────
 const GAS_URL = 'https://script.google.com/macros/s/AKfycbyumEL_p516n7f8gZx36gB5H7v3j4kQWfCup5Q3_0LY7uIWmyaTbme978USqhg0Y292gw/exec'; // Apps Script 웹앱 배포 URL (비어 있으면 데모 데이터)
-const VERSION = 'v1106d';
+const VERSION = 'v1106f';
 const EXTEND_DAYS = 28;      // 4주 연장
 const NOTICE_DAYS = 3;       // 만료 D-3부터 확인 필요
 const OVERDUE_LIMIT = 14;    // 만료 후 14일까지 표시 (보관 14일 정책)
@@ -275,7 +275,7 @@ function render() {
   const cols = (rows[0] || []).length;
   const grid = rows.map((row) => row.map((c) => {
     if (!c || c.t !== 'locker') return '<div></div>';
-    const no = String(c.n), used = !!c.name && !c.disabled;
+    const no = String(c.n), used = !!c.name && !c.disabled && !vacSet.has(no);
     const cls = ['cell', c.disabled ? 'off' : used ? 'used' : '', alertSet.has(no) ? 'alert' : '', vacSet.has(no) ? 'vacant' : ''].join(' ');
     return `<button class="${cls}" data-no="${no}" ${alertSet.has(no) || vacSet.has(no) ? '' : 'tabindex="-1"'}>${esc(c.n)}</button>`;
   }).join('')).join('');
@@ -309,13 +309,13 @@ function render() {
 
   app.innerHTML = `
     <div class="card">
-      <div class="card-head"><span class="card-title">${esc(b.name)} 사물함</span><span class="card-sub">이용 ${b.usageCount} / ${b.totalCount}</span></div>
+      <div class="card-head"><span class="card-title">${esc(b.name)} 사물함</span><span class="card-sub">이용 ${b.usageCount - (b.usage || []).filter((u) => vacSet.has(u.lockerNo)).length} / ${b.totalCount}</span></div>
       <div style="overflow-x:auto"><div class="grid" style="grid-template-columns:repeat(${cols},44px)">${grid}</div></div>
       <div class="legend">
         <span><i style="background:color-mix(in srgb,var(--bc) 28%,transparent)"></i>이용중</span>
         <span><i style="background:#e5e7eb"></i>사용 안함</span>
         <span><i style="border:1px dashed var(--danger)"></i>확인 필요</span>
-        <span><i style="background:#f3f4f6;border:1.5px solid var(--border)"></i>비움 처리</span>
+        <span><i style="border:1px solid var(--border)"></i>빈 사물함</span>
       </div>
     </div>
     <div class="card">
