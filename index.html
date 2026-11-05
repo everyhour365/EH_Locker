@@ -253,8 +253,11 @@ function render() {
   if (!state.data) return;
 
   const b = state.data[state.branch];
-  const allAlerts = getAlerts(b);
-  const isVac = (a) => !!state.emptied[`${state.branch}|${a.no}|${a.endDate}`];
+  const emptiedAt = (a) => state.emptied[`${state.branch}|${a.no}|${a.endDate}`];
+  const isVac = (a) => !!emptiedAt(a);
+  // 비움 처리 후 24시간이 지나면 목록에서 제거, 그 전에는 목록 맨 아래로
+  const expired = (a) => { const d = parse(emptiedAt(a)); return !!d && Date.now() - d.getTime() >= DAY; };
+  const allAlerts = getAlerts(b).filter((a) => !expired(a)).sort((x, y) => isVac(x) - isVac(y));
   const alerts = allAlerts;
   const todo = allAlerts.filter((a) => !isVac(a));
   const alertSet = new Set(todo.map((a) => a.no));
