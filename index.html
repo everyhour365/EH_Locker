@@ -135,7 +135,7 @@ body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSy
 <script>
 // ─── 설정 ────────────────────────────────────────────────────────────────────
 const GAS_URL = 'https://script.google.com/macros/s/AKfycbyumEL_p516n7f8gZx36gB5H7v3j4kQWfCup5Q3_0LY7uIWmyaTbme978USqhg0Y292gw/exec'; // Apps Script 웹앱 배포 URL (비어 있으면 데모 데이터)
-const VERSION = 'v1106c';
+const VERSION = 'v1106d';
 const EXTEND_DAYS = 28;      // 4주 연장
 const NOTICE_DAYS = 3;       // 만료 D-3부터 확인 필요
 const OVERDUE_LIMIT = 14;    // 만료 후 14일까지 표시 (보관 14일 정책)
@@ -186,7 +186,8 @@ async function load(fresh = false) {
 // ─── 확인 필요 계산 ──────────────────────────────────────────────────────────
 const DAY = 86400000;
 const parse = (s) => { if (!s) return null; const d = new Date(String(s).replace(' ', 'T')); return isNaN(d) ? null : d; };
-const md = (d) => `${+d.slice(5, 7)}/${+d.slice(8, 10)}`;
+const dow = (d) => '일월화수목금토'[new Date(+d.slice(0, 4), +d.slice(5, 7) - 1, +d.slice(8, 10)).getDay()];
+const md = (d) => `${+d.slice(5, 7)}/${+d.slice(8, 10)}(${dow(d)})`;
 const pad = (n) => String(n).padStart(2, '0');
 const ymd = (d) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
 function dayDiff(end) {
@@ -296,7 +297,7 @@ function render() {
         <div class="who"><span class="no">${esc(a.no)}번</span> ${esc(a.name || '이용자 정보 없음')}</div>
         <span class="pill ${pill}">${stLabel(a.diff)}</span>
       </div>
-      <div class="meta">만료 : ${a.endDate.slice(2)}${a.extendCount != null ? ` · 연장 ${a.extendCount}회` : ''}<br>연장시 <b>${md(a.extStart)} ~ ${md(a.newEndDate)}</b></div>
+      <div class="meta">만료 : ${a.endDate.slice(2)} ${dow(a.endDate)}${a.extendCount != null ? ` · 연장 ${a.extendCount}회` : ''}<br>연장시 <b>${md(a.extStart)} ~ ${md(a.newEndDate)}</b></div>
       ${chips ? `<div class="chips">${chips}</div>` : ''}
       <div class="btns">
         <button class="btn ${emptyAt ? 'ok' : ''}" data-empty="${a.no}|${a.endDate}|${emptyAt ? 0 : 1}">${emptyAt ? '완료' : '비움'}</button>
