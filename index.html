@@ -56,19 +56,25 @@ body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSy
 .link{font-size:13px;font-weight:700;color:var(--bc);text-decoration:none;background:none;border:none;cursor:pointer}
 .warn{font-size:12px;color:var(--danger);margin-bottom:10px;line-height:1.5}
 .empty{font-size:13px;color:var(--sub);padding:6px 0}
-.item{padding:12px 0;border-top:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;gap:10px;scroll-margin-top:140px}
+.item{padding:14px 0;border-top:1px solid var(--border);scroll-margin-top:140px}
+.item-top{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.item .who{font-size:16px;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pill{flex-shrink:0;font-size:12px;font-weight:700;padding:3px 9px;border-radius:999px;background:#eef2f7;color:var(--sub)}
+.pill.over{background:#fee2e2;color:var(--danger)}
+.pill.today{background:#ffedd5;color:#c2410c}
+.pill.soon{background:var(--brand-light);color:var(--brand)}
+.chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+.chip{font-size:11px;font-weight:600;color:#15803d;background:#dcfce7;border-radius:6px;padding:3px 7px;font-variant-numeric:tabular-nums}
 .item:first-of-type{border-top:none}
 .item.flash{animation:flash 1.2s}
 @keyframes flash{0%,60%{background:#fef2f2}100%{background:transparent}}
 .item .no{font-weight:700;font-variant-numeric:tabular-nums}
-.item .st{font-size:13px;margin-left:4px;color:var(--sub)}
-.item .st.over{color:var(--danger);font-weight:600}
-.item .meta{font-size:12px;color:var(--sub);margin-top:3px;line-height:1.5;font-variant-numeric:tabular-nums}
-.item .sent{font-size:11px;color:#16a34a;font-weight:600;margin-top:2px}
+.item .meta{font-size:13px;color:var(--sub);margin-top:6px;line-height:1.6;font-variant-numeric:tabular-nums}
+.item .meta b{color:var(--text);font-size:14px}
 .item.paid{background:#f0fdf4;margin:0 -8px;padding-left:8px;padding-right:8px;border-radius:8px}
 .btn.ok{background:#16a34a;border-color:#16a34a;color:#fff}
-.btns{display:flex;gap:6px;flex-shrink:0}
-.btn{border:1px solid var(--border);background:var(--surface);color:var(--sub);border-radius:8px;padding:9px 12px;font-size:13px;font-weight:700;cursor:pointer;text-decoration:none;white-space:nowrap}
+.btns{display:flex;gap:8px;margin-top:12px}
+.btn{border:1px solid var(--border);background:var(--surface);color:var(--sub);border-radius:10px;padding:11px 0;flex:1;text-align:center;font-size:14px;font-weight:700;cursor:pointer;text-decoration:none;white-space:nowrap}
 .btn.fill{background:var(--bc);border-color:var(--bc);color:#fff}
 .btn:active{opacity:.85}
 .btn.dis{opacity:.45;pointer-events:none}
@@ -277,14 +283,19 @@ function render() {
     const paidAt = state.paid[`${state.branch}|${a.no}|${a.endDate}`];
     const sms = a.phone ? `sms:${a.phone}${isIOS ? '&' : '?'}body=${encodeURIComponent(msg)}` : '';
     const emptyAt = state.emptied[`${state.branch}|${a.no}|${a.endDate}`];
+    const pill = a.diff < 0 ? 'over' : a.diff === 0 ? 'today' : 'soon';
+    const chips = [
+      sentAt ? `${state.alimtalk[state.branch] ? '알림톡' : '문자'} ${esc(sentAt.slice(5))}` : '',
+      paidAt ? `입금 확인 ${esc(paidAt.slice(5))}` : '',
+      emptyAt ? `비움 ${esc(emptyAt.slice(5))}` : ''
+    ].filter(Boolean).map((t) => `<span class="chip">✓ ${t}</span>`).join('');
     return `<div class="item ${emptyAt ? 'vac' : paidAt ? 'paid' : ''}" id="it-${a.no}">
-      <div style="min-width:0">
-        <div><span class="no">${esc(a.no)}번</span> ${esc(a.name || '이용자 정보 없음')}<span class="st ${a.diff < 0 ? 'over' : ''}">${stLabel(a.diff)}</span></div>
-        <div class="meta">만료 : ${a.endDate.slice(2)}<br>연장시 <b>${md(a.extStart)} ~ ${md(a.newEndDate)}</b>${a.extendCount != null ? ` · 연장 ${a.extendCount}회` : ''}</div>
-        ${sentAt ? `<div class="sent">✓ ${state.alimtalk[state.branch] ? '알림톡' : '문자'} ${esc(sentAt.slice(5))}</div>` : ''}
-        ${paidAt ? `<div class="sent">✓ 입금 확인 ${esc(paidAt.slice(5))} · 스터디모아에서 연장하세요</div>` : ''}
-        ${emptyAt ? `<div class="sent">✓ 비움 ${esc(emptyAt.slice(5))}</div>` : ''}
+      <div class="item-top">
+        <div class="who"><span class="no">${esc(a.no)}번</span> ${esc(a.name || '이용자 정보 없음')}</div>
+        <span class="pill ${pill}">${stLabel(a.diff)}</span>
       </div>
+      <div class="meta">만료 : ${a.endDate.slice(2)}${a.extendCount != null ? ` · 연장 ${a.extendCount}회` : ''}<br>연장시 <b>${md(a.extStart)} ~ ${md(a.newEndDate)}</b></div>
+      ${chips ? `<div class="chips">${chips}</div>` : ''}
       <div class="btns">
         ${emptyAt ? '' : !a.phone ? '<span class="btn dis">번호 없음</span>' : state.alimtalk[state.branch] ? `<button class="btn fill" data-ata="${a.no}|${a.endDate}">알림톡</button>` : `<a class="btn fill" href="${sms}" data-sent="${a.no}|${a.endDate}">문자</a>`}
         <button class="btn ${paidAt ? 'ok' : ''}" data-paid="${a.no}|${a.endDate}|${paidAt ? 0 : 1}">${paidAt ? '완료' : '입금'}</button>
