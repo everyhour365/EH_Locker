@@ -184,7 +184,7 @@ async function load(fresh = false) {
 // ─── 확인 필요 계산 ──────────────────────────────────────────────────────────
 const DAY = 86400000;
 const parse = (s) => { if (!s) return null; const d = new Date(String(s).replace(' ', 'T')); return isNaN(d) ? null : d; };
-const md = (d) => d.slice(5);
+const md = (d) => `${+d.slice(5, 7)}/${+d.slice(8, 10)}`;
 const pad = (n) => String(n).padStart(2, '0');
 const ymd = (d) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
 function dayDiff(end) {
