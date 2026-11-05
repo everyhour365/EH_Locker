@@ -17,6 +17,7 @@ CS system / IoT system과 같은 구조: 단일 `index.html`(GitHub Pages) + App
 EH_Locker_system/
 ├─ index.html              프론트 전체 (HTML+CSS+JS 단일 파일)
 ├─ CLAUDE.md               이 문서
+├─ icon.svg / icon-180.png 앱 아이콘(자물쇠, 진녹색 원). 홈 화면 추가용 apple-touch-icon + 파비콘
 ├─ .gitignore              Config.js, .clasp.json, node_modules 제외
 └─ apps-script/
    ├─ Code.js              웹앱 백엔드 (doPost: lockers / markSent / markEmpty / markPaid / sendAlimtalk)
