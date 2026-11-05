@@ -374,8 +374,11 @@ function render() {
     const [no, endDate] = el.dataset.sent.split('|');
     const a = alerts.find((x) => x.no === no);
     copyText(buildMessage(a, b.name)).then((ok) => toast(ok ? '문구 복사됨' : '복사 실패 — 문자앱 본문을 확인하세요'));
+    // 바로 표시: 클릭의 기본 동작(문자앱 열기)이 시작된 뒤에 다시 그린다
+    state.sent[`${state.branch}|${no}|${endDate}`] = `${ymd(new Date())} ${pad(new Date().getHours())}:${pad(new Date().getMinutes())}`;
+    setTimeout(render, 300);
     if (!GAS_URL) return;
-    callGas({ action: 'markSent', branch: state.branch, lockerNo: no, endDate }).then((j) => { state.sent = j.sent || state.sent; }).catch(() => {});
+    callGas({ action: 'markSent', branch: state.branch, lockerNo: no, endDate }).then((j) => { state.sent = j.sent || state.sent; render(); }).catch(() => {});
   }));
 }
 
@@ -397,6 +400,7 @@ $('setSave').onclick = () => {
   keyChanged ? load(true) : render();
 };
 $('refreshBtn').onclick = () => load(true);
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible' && state.data) render(); });
 
 // ─── 데모 데이터 (GAS_URL 미설정 시) ─────────────────────────────────────────
 function demoData() {
